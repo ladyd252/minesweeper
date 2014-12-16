@@ -1,3 +1,5 @@
+require 'yaml'
+
 class Game
 
   def initialize
@@ -6,20 +8,19 @@ class Game
   end
 
   def play
+    if !load_game
+      until @board.over?
+        @board.render
+        save
+        move
+      end
 
-    until @board.over?
-      @board.render_solution
-      puts "##########################################################"
-      @board.render
-      move
+      if @board.won
+        puts "Yey! You win!"
+      else
+        puts "Boo. That was a bomb :("
+      end
     end
-
-    if @board.won
-      puts "Yey! You win!"
-    else
-      puts "Boo. That was a bomb :("
-    end
-
   end
 
   def move
@@ -31,11 +32,38 @@ class Game
     tile = @board.board[position[0]][position[1]]
 
     if action == "f"
-      tile.flagged = true
+      tile.flagged = tile.flagged == true ? false : true
     else
       tile.reveal
     end
+  end
 
+  def save
+    puts "Would you like to save your current progess?(y/n)"
+
+    answer = gets.scan(/[yn]/).first
+    if answer == "y"
+      puts "Enter filename: (.yml)"
+      filename = gets.chomp
+
+      File.open("#{filename}", "w") {|f| f.write self.to_yaml }
+    end
+  end
+
+  def load_game
+
+    puts "Would you like to load a previous game?(y/n)"
+
+    answer = gets.chomp
+    if answer == "y"
+
+      puts "What is the filename"
+      filename = gets.chomp
+
+      YAML.load_file("#{filename}").play
+      return true
+    end
+    false
   end
 
 end
@@ -44,7 +72,7 @@ end
 class Board
   attr_accessor :over, :won, :board
   BOARD_SIZE = 9
-  BOMB_COUNT = 5
+  BOMB_COUNT = 9
 
   def initialize
     @over = false
@@ -131,12 +159,15 @@ class Tile
       @board.won = false
     else
       @revealed = true
-      # if neighbors_bomb_count == 0
-      #   neighbors.each do |neighbor|
-      #     @board.board[neighbor].reveal
-      #   end
-      # end
+      if neighbors_bomb_count == 0
+        neighbors.each do |neighbor|
+          neigh_tile = @board.board[neighbor[0]][neighbor[1]]
+          neigh_tile.reveal if neigh_tile.revealed == false && neigh_tile.flagged == false
+        end
+      end
     end
+
+    nil
   end
 
   def bomb
