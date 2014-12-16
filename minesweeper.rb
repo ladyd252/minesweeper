@@ -1,12 +1,15 @@
 class Game
 
-  def initialize()
-    @board = Board.new()
+  def initialize
+    @board = Board.new
+    nil
   end
 
   def play
 
     until @board.over?
+      @board.render_solution
+      puts "##########################################################"
       @board.render
       move
     end
@@ -21,11 +24,11 @@ class Game
 
   def move
     p "Flag or reveal, where would you like to move to?"
+    answer = gets
+    action = answer.scan(/[fr]/).first
+    position = answer.scan(/[0-9]/).map(&:to_i)
 
-    action = gets.scan('/[fr]/')
-    position = gets.scan('/[0-9]/')
-
-    tile = @board.tiles[position]
+    tile = @board.board[position[0]][position[1]]
 
     if action == "f"
       tile.flagged = true
@@ -39,7 +42,7 @@ end
 
 
 class Board
-  attr_accessor :over, :won, :tiles
+  attr_accessor :over, :won, :board
   BOARD_SIZE = 9
   BOMB_COUNT = 5
 
@@ -55,49 +58,53 @@ class Board
     @board.flatten.sample(BOMB_COUNT).each do |tile_to_bomb|
       tile_to_bomb.bomb
     end
-    # @board = Array.new(9) {|array| Array.new(9) {|num| num = 0}}
-    # 5.times do
-    #   col = rand(9)
-    #   row = rand(9)
-    #   @board[col][row] = "b"
-    # end
-    # @tiles = Array.new(9) {|array| Array.new(9) {|num| num = 0}}
-    # @board.each_with_index do |array, i|
-    #   array.each_with_index do |val, j|
-    #     pos = [i, j]
-    #     @tiles[i][j] = Tile.new(@board, pos)
-    #   end
-    # end
+
+    nil
   end
 
   def over?
+    return true if @over == true
     counter  = 0
-    tiles.each do |array|
+    @board.each do |array|
       array.each do |tile|
         counter += 1 if tile.revealed
       end
     end
-    if counter == 76
+    if counter == BOARD_SIZE * BOARD_SIZE - BOMB_COUNT
       over = true
     end
+
     over
   end
 
   def render
-    p @tiles
-    @tiles.each_with_index do |array, i|
+    @board.each_with_index do |array, i|
       array.each_with_index do |tile, j|
-        if tile.revaled == true
-          print tile.neighbors_bomb_count
+        if tile.revealed == true
+          print "#{tile.neighbors_bomb_count}  "
         elsif tile.flagged == true
-          print "f"
+          print "f  "
         else
-          print "*"
+          print "*  "
         end
       end
-
       puts ""
     end
+    nil
+  end
+
+  def render_solution
+    @board.each_with_index do |array, i|
+      array.each_with_index do |tile, j|
+        if tile.bombed == true
+          print "b  "
+        else
+          print "*  "
+        end
+      end
+      puts ""
+    end
+    nil
   end
 
 end
@@ -116,23 +123,20 @@ class Tile
   end
 
   def inspect
-    @pos
   end
 
   def reveal
-    if bomb?
+    if @bombed
       @board.over = true
-      won = false
+      @board.won = false
     else
-      revaled = true
-      if neighbors_bomb_count == 0
-        neighbors.each do |neighbor|
-          @board.tiles[neighbor].reveal
-        end
-      end
+      @revealed = true
+      # if neighbors_bomb_count == 0
+      #   neighbors.each do |neighbor|
+      #     @board.board[neighbor].reveal
+      #   end
+      # end
     end
-
-    self
   end
 
   def bomb
@@ -140,7 +144,7 @@ class Tile
   end
 
   def neighbors
-    cur_x, cur_y = pos
+    cur_x, cur_y = @pos
 
     moves = [
       [ -1, -1],
@@ -158,10 +162,11 @@ class Tile
     moves.each do |(dx, dy)|
       new_pos = [cur_x + dx, cur_y + dy]
 
-      if new_pos.all? { |coord| coord.between?(0, 9) }
+      if new_pos.all? { |coord| coord.between?(0, 8) }
         valid_moves << new_pos
       end
     end
+
     valid_moves
   end
 
@@ -169,16 +174,14 @@ class Tile
     count = 0
 
     neighbors.each do |neighbor|
-      tile = Tile.new(@board, neighbor)
-      count += 1 if tile.bomb? == true
+      tile = @board.board[neighbor[0]][neighbor[1]]
+      count += 1 if tile.bombed == true
     end
 
     count
   end
 
-  def flag
-  end
 end
 
-#game = Game.new
-#game.play
+game = Game.new
+game.play
